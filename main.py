@@ -87,28 +87,26 @@ def get_sections(mode : str, url : str, headers):
     ''' Download sections '''
 
     dl_t0 = time.time()
+    sections = []
     if len(headers) == 1:
-        p = []
         response = requests.get(url)
-        p.append(response.content)
+        sections.append(response.content)
     else:
         if mode == 'sync':
-            p = []    
             for header in headers:
                 response = requests.get(url, headers=header)
-                p.append(response.content)
+                sections.append(response.content)
         elif mode == 'async':
-            p = []
             async def async_downloads():
                 ''' Download sections asynchronously '''
                 async with aiohttp.ClientSession() as session:
                     tasks = get_tasks(session, url, headers)
                     responses = await asyncio.gather(*tasks) 
                     for response in responses:
-                        p.append(await response.read())
+                        sections.append(await response.read())
             asyncio.run(async_downloads())
     dl_time = (time.time() - dl_t0)
-    return p, dl_time
+    return sections, dl_time
 
 def get_tasks(session, url, headers):
     ''' Create task lisk for async execution \
