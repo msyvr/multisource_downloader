@@ -3,7 +3,8 @@
 from get_input import get_input
 
 def reset_times():
-    ''' Reset timing lists for download, file reassembly, disk write. For computing average times over multiple runs '''
+    ''' Reset timing lists for download, file reassembly, disk
+    write. For computing average times over multiple runs '''
 
     d_times = []
     f_times = []

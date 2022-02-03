@@ -161,12 +161,12 @@ def save_file(mode : str, fname : str, byte_data : bytes):
 
     return file_name, write_time
 
-# TODO
-# ETag check
+
+
 
 if __name__ == "__main__":
 
-    number_sources = 10
+    number_sources = 7
     # to compare timing: modes = ['sync', 'async']
     modes = ['sync', 'async']
     url, num_repeats = get_input()
