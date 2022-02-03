@@ -134,7 +134,8 @@ def validate_etag(header, byte_file : bytes):
     ''' Compare the file header ETag with known ETag algorithms \
         applied to the downloaded (byte) file to validate '''
 
-    etag = header['ETag'][3:-1]
+    etag = header['ETag'][1:-1] if header['ETag'][0:1]!=['W/'] \
+            else header['ETag'][3:-1]
     print(f'ETag from file header: {etag}')
     # TODO ? multipart download calc
     for alg in hashlib.algorithms_guaranteed:
