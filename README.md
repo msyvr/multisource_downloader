@@ -1,13 +1,16 @@
 # Multisouce downloader
 Command line script for downloading a file via HTTP protocol from a (or multiple) URL resource(s) in multiple parts.
 
-Python
+Python, synchronous and asynchronous
+
     - 'async' mode: asyncio + aiohttp
     - 'sync' mode: requests
 
 ## Use
 Clone repo to your local environment.
-Check/run run.sh for requirements and how to launch downloads.
+
+Check/run run.sh: get requirements, deploy
+
 - entry point is main.py
 - default inputs are:
     - url to publicly hosted file (~70MB)
