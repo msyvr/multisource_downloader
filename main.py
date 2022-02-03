@@ -184,3 +184,4 @@ if __name__ == "__main__":
             f_times.append(file_time)
             w_times.append(write_time)
         average_times(mode, num_repeats, d_times, f_times, w_times)
+        print(f'\n Downloaded file saved to local directory as {fname}\n')
