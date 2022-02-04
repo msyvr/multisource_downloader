@@ -23,7 +23,7 @@ Check/run `run.sh`: get requirements, check inputs (or go with defaults), deploy
         - filename has sync/async signifier
 
 ## Inputs
-Core inputs are hardcoded in `main.py` after `if __name__ == "__main__"`... 
+Core inputs are hardcoded in `main.py`:
 
 They are:
 - `'mode'`
