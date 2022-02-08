@@ -1,5 +1,3 @@
-#!get_input.py
-
 def get_input():
     ''' 
     Input parameters.

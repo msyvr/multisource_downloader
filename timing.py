@@ -1,5 +1,3 @@
-#! timing.py
-
 from get_input import get_input
 
 def reset_times():

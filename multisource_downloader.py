@@ -1,5 +1,3 @@
-#! main.py
-
 import requests, asyncio, aiohttp, hashlib, time
 from get_input import get_input
 from timing import reset_times, average_times
@@ -71,12 +69,13 @@ def size_sections(header, number_sections : int):
     ''' Establish the byte size per section '''
 
     if header['Content-Length']:
+        # equivalent to ceiling division (round up)
         return -(-int(header['Content-Length']) // number_sections)
     else:
         print('! File size unknown on initiating download')
         if 'Accept-Ranges' not in header or \
             header['Accept-Ranges'] == 'none':
-            # TODO ? unknown content length and no partial downloads: 
+            # TODO ? unknown content length + no partial downloads: 
             # try: A. set to inf (download will stop at eof (exceptions?))
             # OR B. stream/chunk
             pass
@@ -109,8 +108,7 @@ def get_sections(mode : str, url : str, headers):
     return sections, dl_time
 
 def get_tasks(session, url, headers):
-    ''' Create task lisk for async execution \
-        with aiohttp.ClientSession '''
+    ''' Create task lisk for async execution + aiohttp.ClientSession '''
 
     tasks = []
     for header in headers:
