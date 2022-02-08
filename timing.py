@@ -1,5 +1,3 @@
-from get_input import get_input
-
 def reset_times():
     ''' Reset timing lists for download, file reassembly, disk
     write. For computing average times over multiple runs '''
@@ -7,15 +5,6 @@ def reset_times():
     d_times = []
     f_times = []
     w_times = []
-
-    return d_times, f_times, w_times
-
-def append_times(d_times, f_times, w_times, download_time, file_time, write_time):
-    ''' Track timings from individual runs for eventual averaging '''
-    
-    d_times.append(download_time)
-    f_times.append(file_time)
-    w_times.append(write_time)
 
     return d_times, f_times, w_times
 

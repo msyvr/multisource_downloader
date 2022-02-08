@@ -1,5 +1,4 @@
 import requests, asyncio, aiohttp, hashlib, time
-from get_input import get_input
 from timing import reset_times, average_times
 
 def multisource_download(mode: str, url : str, number_sources : int):
@@ -132,12 +131,11 @@ def validate_etag(header, byte_file : bytes):
 
     etag = header['ETag'].strip('"') if header['ETag'][0:2]!='W/' else header['ETag'][2:].strip('"')
     print(f'ETag from file header: {etag}')
-    # TODO ? multipart download calc
+    # TODO ? look into zlib (compressed files?) / github info?
     for alg in hashlib.algorithms_guaranteed:
         if alg.startswith('shake_'):
             continue
         checksum = getattr(hashlib, alg)(byte_file).hexdigest()
-        #print(f'Checksum: {alg}: {checksum}')
         if checksum == etag:
             print('ETags match:')
             print(alg, checksum.digest(), etag)
@@ -163,14 +161,16 @@ def save_file(mode : str, fname : str, byte_data : bytes):
 if __name__ == "__main__":
 
     number_sources = 7
-    # to compare timing: modes = ['sync', 'async']
-    modes = ['sync', 'async']
-    url, num_repeats = get_input()
+    # to compare timing, set: modes = ['sync', 'async']
+    modes = ['async']
+    url = 'https://raw.githubusercontent.com/msyvr/testfiles/361d77a8bf67c065cac0804edf5f023b8b5ad25a/LeanneAndJohnny2017.mov'
+    # set num_repeats > 1 to get timing averages
+    num_repeats = 1
     
     for mode in modes:
         d_times, f_times, w_times = reset_times()
-        # loop for performance testing (averages)
-        # num_repeats = 1 by default
+        # performance testing (averages): num_repeats
+        # default: num_repeats = 1 (single multipart download)
         for i in range(num_repeats):
 
             fname, download_time, file_time, write_time = \
