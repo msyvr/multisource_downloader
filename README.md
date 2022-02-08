@@ -19,21 +19,22 @@ Check/run `deploy.sh`: get requirements, check inputs (or go with defaults), dep
 ## Inputs
 Core inputs are hardcoded in `main.py` as:
 
-- `'mode'`
+- `mode`
     - the download mode: synchronous (requests) or asynchronous (asyncio + aiohttp)
-- `'number_sources'` 
+- `number_sources` 
     - number of sections into which the file should be split (if range downloads are permitted, else will be set to 1)
-- `'url'`
-    - currently, identifies a ~70 MB .mov file hosted on github
-
-Additional (non essential) input(s):
-- `get_inputs.py`: `num_runs`
-    - number of repeat runs (for average performance metrics)
+- `url`
+    - demo: identifies a ~70 MB .mov file hosted on github
+- `num_repeats`
+    - default = 1
+    - set > 1 to average downloads for timing averages
 
 ## ETag/checksum
 The test tile has a (weak) ETag.
 - validate_etag() cycles through `hashlib` algorithms applied to the final `byte_file`
     - no checksum match identified via hashlib library
+    - github specs/protocol for generating?
+    - ?zlib (for compressed files)
 
 ## Tests
 TODO
