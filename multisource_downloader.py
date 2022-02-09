@@ -134,13 +134,11 @@ def validate_etag(header, byte_file: bytes):
     for alg in hashlib.algorithms_guaranteed:
         if alg.startswith('shake_'):
             etag_length = len(etag)
-            checksum = getattr(hashlib, alg)(byte_file).digest(etag_length//2)
-            print(checksum)
+            checksum = getattr(hashlib, alg)(byte_file).hexdigest(etag_length//2)
         else:
-            checksum = getattr(hashlib, alg)(byte_file).digest()
+            checksum = getattr(hashlib, alg)(byte_file).hexdigest()
         if checksum == etag:
-            print('ETags match:')
-            print(alg, checksum.digest(), etag)
+            print('ETags match')
             break
     print('ETag ?= checksum : no match found')
     return 
@@ -164,7 +162,7 @@ if __name__ == "__main__":
 
     number_sources = 7
     # to compare timing, set: modes = ['sync', 'async']
-    modes = ['sync', 'async']
+    modes = ['async']
     url = 'https://raw.githubusercontent.com/msyvr/testfiles/361d77a8bf67c065cac0804edf5f023b8b5ad25a/LeanneAndJohnny2017.mov'
     # set num_repeats > 1 to get timing averages
     num_repeats = 1
