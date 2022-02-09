@@ -1,7 +1,7 @@
 import requests, asyncio, aiohttp, hashlib, time
 from timing import reset_times, average_times
 
-def multisource_download(mode: str, url : str, number_sources : int):
+def multisource_download(mode: str, url: str, number_sources: int):
     '''
     Download url resource in multiple sections 
     (potentially distributed among multiple servers).
@@ -32,9 +32,8 @@ def multisource_download(mode: str, url : str, number_sources : int):
     # Range request headers (files that don't accept
     # range requests have been assigned n_sections = 1)
     start_bytes = [(bytes_each * i) for i in range(n_sections)]
-    range_strings = \
-        [f"bytes={start_byte}-{start_byte + bytes_each - 1}" for \
-            start_byte in start_bytes]
+    range_strings = [f"bytes = {start_byte}-{start_byte + bytes_each - 1}" 
+        for start_byte in start_bytes]
     header_pairs = (("Range", range) for range in range_strings)
     headers = [dict([pair]) for pair in header_pairs]
 
@@ -54,7 +53,7 @@ def multisource_download(mode: str, url : str, number_sources : int):
     
     return file_name, dl_time, file_time, write_time
 
-def number_sections(header, number_sources : int):
+def number_sections(header, number_sources: int):
     ''' Verify that the file can be requested in ranges/sections '''
 
     if 'Accept-Ranges' not in header or \
@@ -64,7 +63,7 @@ def number_sections(header, number_sources : int):
     else:
         return number_sources
 
-def size_sections(header, number_sections : int):
+def size_sections(header, number_sections: int):
     ''' Establish the byte size per section '''
 
     if header['Content-Length']:
@@ -81,7 +80,7 @@ def size_sections(header, number_sections : int):
         else:
             return 10*(2**12) # 2**12 ~= 1 MB
 
-def get_sections(mode : str, url : str, headers):
+def get_sections(mode: str, url: str, headers):
     ''' Download sections '''
 
     dl_t0 = time.time()
@@ -106,7 +105,7 @@ def get_sections(mode : str, url : str, headers):
     dl_time = (time.time() - dl_t0)
     return sections, dl_time
 
-def get_tasks(session, url, headers):
+def get_tasks(session, url: str, headers):
     ''' Create task lisk for async execution + aiohttp.ClientSession '''
 
     tasks = []
@@ -115,7 +114,7 @@ def get_tasks(session, url, headers):
             headers=header, ssl=False)))
     return tasks
 
-def assemble_byte_file(file_sections : list):
+def assemble_byte_file(file_sections: list):
     ''' Reassemble file sections into a (byte) file '''
 
     file_t0 = time.time()
@@ -125,17 +124,20 @@ def assemble_byte_file(file_sections : list):
 
     return byte_file, file_time
 
-def validate_etag(header, byte_file : bytes):
-    ''' Compare the file header ETag with known ETag algorithms \
+def validate_etag(header, byte_file: bytes):
+    ''' Compare the file header ETag with known ETag algorithms
         applied to the downloaded (byte) file to validate '''
 
-    etag = header['ETag'].strip('"') if header['ETag'][0:2]!='W/' else header['ETag'][2:].strip('"')
-    print(f'ETag from file header: {etag}')
-    # TODO ? look into zlib (compressed files?) / github info?
+    etag = header['ETag'].strip('"') if header['ETag'][0:2]!='W/' \
+        else header['ETag'][2:].strip('"')
+    # TODO ? no match found: track down github protocols for etags
     for alg in hashlib.algorithms_guaranteed:
         if alg.startswith('shake_'):
-            continue
-        checksum = getattr(hashlib, alg)(byte_file).hexdigest()
+            etag_length = len(etag)
+            checksum = getattr(hashlib, alg)(byte_file).digest(etag_length//2)
+            print(checksum)
+        else:
+            checksum = getattr(hashlib, alg)(byte_file).digest()
         if checksum == etag:
             print('ETags match:')
             print(alg, checksum.digest(), etag)
@@ -143,7 +145,7 @@ def validate_etag(header, byte_file : bytes):
     print('ETag ?= checksum : no match found')
     return 
 
-def save_file(mode : str, fname : str, byte_data : bytes):
+def save_file(mode: str, fname: str, byte_data: bytes):
     ''' Save file (reassembled from sections) to disk '''
 
     w_t0 = time.time()
@@ -162,7 +164,7 @@ if __name__ == "__main__":
 
     number_sources = 7
     # to compare timing, set: modes = ['sync', 'async']
-    modes = ['async']
+    modes = ['sync', 'async']
     url = 'https://raw.githubusercontent.com/msyvr/testfiles/361d77a8bf67c065cac0804edf5f023b8b5ad25a/LeanneAndJohnny2017.mov'
     # set num_repeats > 1 to get timing averages
     num_repeats = 1
@@ -180,4 +182,4 @@ if __name__ == "__main__":
             f_times.append(file_time)
             w_times.append(write_time)
         average_times(mode, num_repeats, d_times, f_times, w_times)
-        print(f'\n Downloaded file saved to local directory as {fname}\n')
+        print(f'\n Downloaded file saved locally as {fname}\n')

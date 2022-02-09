@@ -30,11 +30,11 @@ Core inputs are hardcoded in `main.py` as:
     - set > 1 to average downloads for timing averages
 
 ## ETag/checksum
-The test tile has a (weak) ETag.
+The test file has a (weak) ETag.
 - validate_etag() cycles through `hashlib` algorithms applied to the final `byte_file`
     - no checksum match identified via hashlib library
-    - github specs/protocol for generating?
-    - ?zlib (for compressed files)
+TODO
+- track down details of github's etag-generation protocol
 
 ## Tests
 TODO
