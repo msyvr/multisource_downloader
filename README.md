@@ -33,6 +33,7 @@ Core inputs are hardcoded in `main.py` as:
 The test file has a (weak) ETag.
 - validate_etag() cycles through `hashlib` algorithms applied to the final `byte_file`
     - no checksum match identified via hashlib library
+
 TODO
 - track down details of github's etag-generation protocol
 
