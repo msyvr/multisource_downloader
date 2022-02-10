@@ -1,183 +1,58 @@
-import requests, asyncio, aiohttp, hashlib, time
-from timing import reset_times, average_times
+import aiohttp, asyncio, requests
+import time, hashlib
 
-def multisource_download(mode: str, url: str, number_sources: int):
-    '''
-    Download url resource in multiple sections 
-    (potentially distributed among multiple servers).
+from helpers import get_request_ranges
 
-    mode: 
-        'sync' = sequential section downloads
-        'async' = asynchronous, using asyncio + aiohttp
+def async_get_sections(url, ranges, filename, fileheader):
 
-    url:
-        resource url on public server
+    async def get_section(session, url, range, count):
+        async with session.get(url, headers=range) as resp:
+            section = await resp.read()
+            print(f'-- downloaded section {count}: range = {range}')
+            return section
 
-    number_sources: 
-        number of sections to download separately
-    '''
+    async def get_all_sections():
+        async with aiohttp.ClientSession() as session:
+            t0_d = time.perf_counter()
 
-    fname = url.split('/')[-1]
+            tasks = []
+            for count, range in enumerate(ranges):
+                tasks.append(asyncio.ensure_future(get_section(session, url, range, count)))
 
-    head = requests.head(url)
-    file_header = head.headers
+            sections = await asyncio.gather(*tasks)
+            print(f'Download time: {time.perf_counter() - t0_d} seconds')
+            bytes_data = b''
+            for section in sections:
+                bytes_data += section
+            with open(filename, 'wb') as handle:
+                handle.write(bytes_data)
+            print(f'Download + save time: {time.perf_counter() - t0_d} seconds')
 
-    # parameters for sectioning the file for partial downloads
-    n_sections = number_sections(file_header, number_sources)
-    bytes_each = size_sections(file_header, n_sections)
+            # check hashlib algs for etag match; no guarantees
+            etag = fileheader['ETag'].strip('"') if fileheader['ETag'][0:2]!='W/' else fileheader['ETag'][2:].strip('"')
+            for alg in hashlib.algorithms_guaranteed:
+                if alg.startswith('shake_'):
+                    etag_length = len(etag)
+                    checksum = getattr(hashlib, alg)(bytes_data).hexdigest(etag_length//2)
+                else:
+                    checksum = getattr(hashlib, alg)(bytes_data).hexdigest()
+                if checksum == etag:
+                    print('ETags match')
+                    break
+            print('ETag ?= checksum : no match found')
 
-    print(f'\
-        Download: {n_sections} sections, {bytes_each} bytes each.')
-
-    # Range request headers (files that don't accept
-    # range requests have been assigned n_sections = 1)
-    start_bytes = [(bytes_each * i) for i in range(n_sections)]
-    range_strings = [f"bytes = {start_byte}-{start_byte + bytes_each - 1}" 
-        for start_byte in start_bytes]
-    header_pairs = (("Range", range) for range in range_strings)
-    headers = [dict([pair]) for pair in header_pairs]
-
-    # download file sections    
-    file_sections, dl_time = get_sections(mode, url, headers)
-        
-    # assemble file parts into a single byte file
-    byte_file, file_time = assemble_byte_file(file_sections)
-
-    # if ETag, try to validate # TODO
-    if 'ETag' in file_header:
-        print('File has ETag')
-        validate_etag(file_header, byte_file)
-
-    # write byte file to disk at local_dir/fname
-    file_name, write_time = save_file(mode, fname, byte_file)
-    
-    return file_name, dl_time, file_time, write_time
-
-def number_sections(header, number_sources: int):
-    ''' Verify that the file can be requested in ranges/sections '''
-
-    if 'Accept-Ranges' not in header or \
-        header['Accept-Ranges'] == 'none':
-        print('File cannot be split. Single-source download starting.')
-        return 1
-    else:
-        return number_sources
-
-def size_sections(header, number_sections: int):
-    ''' Establish the byte size per section '''
-
-    if header['Content-Length']:
-        # equivalent to ceiling division (round up)
-        return -(-int(header['Content-Length']) // number_sections)
-    else:
-        print('! File size unknown on initiating download')
-        if 'Accept-Ranges' not in header or \
-            header['Accept-Ranges'] == 'none':
-            # TODO ? unknown content length + no partial downloads: 
-            # try: A. set to inf (download will stop at eof (exceptions?))
-            # OR B. stream/chunk
-            pass
-        else:
-            return 10*(2**12) # 2**12 ~= 1 MB
-
-def get_sections(mode: str, url: str, headers):
-    ''' Download sections '''
-
-    dl_t0 = time.time()
-    sections = []
-    if len(headers) == 1:
-        response = requests.get(url)
-        sections.append(response.content)
-    else:
-        if mode == 'sync':
-            for header in headers:
-                response = requests.get(url, headers=header)
-                sections.append(response.content)
-        elif mode == 'async':
-            async def async_downloads():
-                ''' Download sections asynchronously '''
-                async with aiohttp.ClientSession() as session:
-                    tasks = get_tasks(session, url, headers)
-                    responses = await asyncio.gather(*tasks) 
-                    for response in responses:
-                        sections.append(await response.read())
-            asyncio.run(async_downloads())
-    dl_time = (time.time() - dl_t0)
-    return sections, dl_time
-
-def get_tasks(session, url: str, headers):
-    ''' Create task lisk for async execution + aiohttp.ClientSession '''
-
-    tasks = []
-    for header in headers:
-        tasks.append(asyncio.create_task(session.get(url,\
-            headers=header, ssl=False)))
-    return tasks
-
-def assemble_byte_file(file_sections: list):
-    ''' Reassemble file sections into a (byte) file '''
-
-    file_t0 = time.time()
-    byte_file = b''
-    for section in file_sections: byte_file += section
-    file_time = (time.time() - file_t0)
-
-    return byte_file, file_time
-
-def validate_etag(header, byte_file: bytes):
-    ''' Compare the file header ETag with known ETag algorithms
-        applied to the downloaded (byte) file to validate '''
-
-    etag = header['ETag'].strip('"') if header['ETag'][0:2]!='W/' \
-        else header['ETag'][2:].strip('"')
-    # TODO ? no match found: track down github protocols for etags
-    for alg in hashlib.algorithms_guaranteed:
-        if alg.startswith('shake_'):
-            etag_length = len(etag)
-            checksum = getattr(hashlib, alg)(byte_file).hexdigest(etag_length//2)
-        else:
-            checksum = getattr(hashlib, alg)(byte_file).hexdigest()
-        if checksum == etag:
-            print('ETags match')
-            break
-    print('ETag ?= checksum : no match found')
-    return 
-
-def save_file(mode: str, fname: str, byte_data: bytes):
-    ''' Save file (reassembled from sections) to disk '''
-
-    w_t0 = time.time()
-    n = fname.split('.')
-    file_name = n[0] + '_' + mode + '.' + n[-1]
-    with open(file_name, 'wb') as handle:
-        handle.write(byte_data)
-    write_time = time.time() - w_t0
-
-    return file_name, write_time
-
-
-
+    asyncio.run(get_all_sections())
 
 if __name__ == "__main__":
-
-    number_sources = 7
-    # to compare timing, set: modes = ['sync', 'async']
-    modes = ['async']
-    url = 'https://raw.githubusercontent.com/msyvr/testfiles/361d77a8bf67c065cac0804edf5f023b8b5ad25a/LeanneAndJohnny2017.mov'
-    # set num_repeats > 1 to get timing averages
-    num_repeats = 1
     
-    for mode in modes:
-        d_times, f_times, w_times = reset_times()
-        # performance testing (averages): num_repeats
-        # default: num_repeats = 1 (single multipart download)
-        for i in range(num_repeats):
+    #### hardcoded inputs
+    url = 'https://raw.githubusercontent.com/msyvr/testfiles/361d77a8bf67c065cac0804edf5f023b8b5ad25a/LeanneAndJohnny2017.mov'
+    filename = url.split('/')[-1]
+    number_sources = 8
 
-            fname, download_time, file_time, write_time = \
-                multisource_download(mode, url, number_sources)
+    # individual download section parameters
+    file_header = requests.head(url).headers
+    request_ranges = get_request_ranges(file_header, number_sources)
 
-            d_times.append(download_time)
-            f_times.append(file_time)
-            w_times.append(write_time)
-        average_times(mode, num_repeats, d_times, f_times, w_times)
-        print(f'\n Downloaded file saved locally as {fname}\n')
+    # async download
+    async_get_sections(url, request_ranges, filename, file_header)
